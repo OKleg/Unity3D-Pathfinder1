@@ -74,9 +74,9 @@ public class PathNode //: MonoBehaviour
     /// <summary>
     /// Подсветить вершину - перекрасить в красный
     /// </summary>
-    public void Illuminate()
+    public void Illuminate(Color color)
     {
-        body.GetComponent<Renderer>().material.color = Color.red;
+        body.GetComponent<Renderer>().material.color = color;
     }
     
     /// <summary>

@@ -1,9 +1,15 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Diagnostics;
+using Utils;
 
 public class Grid : MonoBehaviour
 {
+    // Dijkstra - green
+    private Color DijkstraColor = Color.green;
+    private Color AStarColor = Color.magenta;
+    private Color WaveColor = Color.yellow;
     //  Модель для отрисовки узла сетки
     public GameObject nodeModel;
 
@@ -84,45 +90,88 @@ public class Grid : MonoBehaviour
             node.Fade();
             node.ParentNode = null;
         }
-        
+       
         //  На данный момент вызов этого метода не нужен, там только устанавливается проходимость вершины. Можно добавить обработку препятствий
         CheckWalkableNodes();
-
+        DijkstraSearchAlgorithm(startNode, finishNode);
+        AStarSearchAlgorithm(startNode, finishNode);
         //  Реализуется аналог волнового алгоритма, причём найденный путь не будет являться оптимальным 
+        WaveSearchAlgorithm(startNode, finishNode);
+    }
+    //  BEGIN MY CODE
 
+    public float ZeroDistance(Vector2Int current, Vector2Int finish, float heightWeight = 1)
+    {
+        return 0;
+    }
+    private void DijkstraSearchAlgorithm(Vector2Int start, Vector2Int goal)
+    {
+        SearchAlgorithm alg = new SearchAlgorithm(grid);
+        alg.Algorithm(start, goal, DijkstraColor, ZeroDistance);
+       
+    }
+
+    private void AStarSearchAlgorithm(Vector2Int start, Vector2Int goal)
+    {
+        SearchAlgorithm alg = new SearchAlgorithm(grid);
+        alg.Algorithm(start, goal,AStarColor,alg.EuclidianDistance);
+        
+    }
+
+
+    private void WaveSearchAlgorithm(Vector2Int startNode, Vector2Int finishNode)
+    {
+        //  Реализуется аналог волнового алгоритма, причём найденный путь не будет являться оптимальным 
         PathNode start = grid[startNode.x, startNode.y];
-
         //  Начальную вершину отдельно изменяем
         start.ParentNode = null;
         start.Distance = 0;
-        
+
         //  Очередь вершин в обработке - в A* необходимо заменить на очередь с приоритетом
         Queue<Vector2Int> nodes = new Queue<Vector2Int>();
+        var came_from = new Dictionary<Vector2Int, Vector2Int>();
+        var cost_so_far = new Dictionary<Vector2Int, float>();
+        var current = new Vector2Int(0, 0);
+        
         //  Начальную вершину помещаем в очередь
         nodes.Enqueue(startNode);
+        came_from.Add(startNode, startNode);
+        cost_so_far.Add(startNode, 0);
         //  Пока не обработаны все вершины (очередь содержит узлы для обработки)
-        while(nodes.Count != 0)
+        while (nodes.Count > 0)
         {
-            Vector2Int current = nodes.Dequeue();
+            current = nodes.Dequeue();
             //  Если достали целевую - можно заканчивать (это верно и для A*)
             if (current == finishNode) break;
             //  Получаем список соседей
             var neighbours = GetNeighbours(current);
             foreach (var node in neighbours)
-                if(grid[node.x, node.y].walkable && grid[node.x, node.y].Distance > grid[current.x, current.y].Distance + PathNode.Dist(grid[node.x, node.y], grid[current.x, current.y]))
+            {
+                if (!grid[node.x, node.y].walkable) continue;
+                float new_cost = grid[current.x, current.y].Distance + PathNode.Dist(grid[node.x, node.y], grid[current.x, current.y]);
+                if (grid[node.x, node.y].Distance > new_cost)
                 {
+                    cost_so_far[node] = new_cost;
                     grid[node.x, node.y].ParentNode = grid[current.x, current.y];
                     nodes.Enqueue(node);
+                    came_from[node] = current;
                 }
+            }
         }
+
         //  Восстанавливаем путь от целевой к стартовой
         var pathElem = grid[finishNode.x, finishNode.y];
-        while(pathElem != null)
+        while (pathElem != null)
         {
-            pathElem.Illuminate();
+            pathElem.Illuminate(WaveColor);
             pathElem = pathElem.ParentNode;
         }
     }
+
+
+    //END MY CODE
+
+
 
     // Метод вызывается каждый кадр
     void Update()
